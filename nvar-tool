@@ -51,12 +51,20 @@ class Store(object):
 
 		self.__parse()
 
+	def __guid(self, idx):
+		return UUID(bytes_le = self.data[idx: idx + 16])
+
+	def __get_guid(self, idx):
+		size = len(self.data)
+		idx = size - (idx + 1) * 16
+		return self.__guid(idx)
+
 	def __parse(self):
 		offset = 24
 		data = self.data
 		while offset < len(data):
 			magic, size, next_offset = struct.unpack('<IHI', data[offset:offset + 10])
-			if magic == 0xffffffff: #free space
+			if magic == 0xffffffff or magic == 0: #free space
 				break
 			if magic != 0x5241564e: #'NVAR'
 				raise Exception('invalid NVAR signature at 0x%04x' %offset)
@@ -66,10 +74,11 @@ class Store(object):
 
 			attr = NVarAttr(next_offset >> 24)
 			if attr.has_local_guid:
-				print 'GUID'
+				print 'GUID', self.__guid(offset)
 				offset += 16
 			else:
-				guid_index = data[offset]
+				guid_index = ord(data[offset])
+				print 'GUID', self.__get_guid(guid_index), guid_index
 				offset += 1
 
 			if attr.ascii_name:
@@ -84,6 +93,7 @@ class Store(object):
 					raise Exception('invalid ucs name')
 				name = str(data[offset: zero]).decode('utf16')
 				print 'NAME', name
+
 			next_offset &= 0xffffff
 			print "%04x: %5d next: 0x%04x %s" %(offset, size, next_offset, attr)
 			offset = _next_offset
