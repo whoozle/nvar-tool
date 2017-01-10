@@ -17,7 +17,7 @@ class NVarAttr(object):
 		return bool(self.value & 0x80)
 
 	@property
-	def has_name(self):
+	def ascii_name(self):
 		return bool(self.value & 0x02)
 
 	@property
@@ -72,11 +72,17 @@ class Store(object):
 				guid_index = data[offset]
 				offset += 1
 
-			if attr.has_name:
+			if attr.ascii_name:
 				zero = data.index('\x00', offset)
 				if zero >= offset + size:
 					raise Exception('invalid ascii name')
 				name = data[offset: zero]
+				print 'NAME', name
+			else:
+				zero = data.index('\x00\x00', offset)
+				if zero >= offset + size:
+					raise Exception('invalid ucs name')
+				name = str(data[offset: zero]).decode('utf16')
 				print 'NAME', name
 			next_offset &= 0xffffff
 			print "%04x: %5d next: 0x%04x %s" %(offset, size, next_offset, attr)
