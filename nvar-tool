@@ -73,6 +73,10 @@ class Store(object):
 			offset += 10
 
 			attr = NVarAttr(next_offset >> 24)
+			if not attr.valid:
+				offset = _next_offset
+				continue
+
 			if attr.has_local_guid:
 				print 'GUID', self.__guid(offset)
 				offset += 16
