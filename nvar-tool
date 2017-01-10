@@ -74,6 +74,7 @@ class Store(object):
 				raise Exception('invalid NVAR signature at 0x%04x' %offset)
 
 			attr = NVarAttr(next_offset >> 24)
+			next_offset &= 0xffffff
 			print "%04x: %5d next: 0x%04x %s" %(offset, size, next_offset, attr)
 
 			_offset = offset
@@ -108,7 +109,6 @@ class Store(object):
 			else: #data only
 				print 'DATA ONLY'
 
-			next_offset &= 0xffffff
 			if next_offset != 0xffffff:
 				_next_offset = _offset + next_offset
 			offset = _next_offset
