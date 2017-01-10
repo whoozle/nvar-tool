@@ -1,0 +1,68 @@
+#!/usr/bin/env python2
+
+import argparse
+
+parser = argparse.ArgumentParser(description='Display/Modify EFI NVAR store')
+parser.add_argument('file', help='FFS image file extracted with MMTool or EFITool')
+args = parser.parse_args()
+
+import struct
+from uuid import UUID
+
+class NVarAttr(object):
+	BITS = ('Runtime', 'AsciiName', 'GUID', 'DataOnly', 'ExtHeader', 'HWError', 'AuthWrite', 'Valid')
+
+	@property
+	def valid(self):
+		return bool(self.value & 0x80)
+
+	@property
+	def has_name(self):
+		return bool(self.value & 0x02)
+
+	def __init__(self, value):
+		self.value = value
+
+	def __repr__(self):
+		r = []
+		for idx, name in enumerate(NVarAttr.BITS):
+			if self.value & (1 << idx):
+				r.append(name)
+		return '|'.join(r)
+
+class Store(object):
+	def __init__(self, path):
+		with open(path, 'rb') as f:
+			data = f.read()
+
+		guid = UUID(bytes_le = data[0:16])
+		checksum, type, attrs, size = struct.unpack('<HBBI', data[16:24])
+		state = size >> 24
+		size &= 0xffffff
+		print "checksum 0x%04x, type 0x%02x, attrs 0x%02x, size: 0x%04x, state: 0x%02x" %(checksum, type, attrs, size, state)
+		self.data = data
+		self.body = data[24:]
+		if len(self.data) != size:
+			raise Exception("invalid size in header")
+
+		self.__parse()
+
+	def __parse(self):
+		offset = 24
+		data = self.data
+		while offset < len(data):
+			magic, size, next_offset = struct.unpack('<IHI', data[offset:offset + 10])
+			if magic != 0x5241564e: #'NVAR'
+				raise Exception('invalid NVAR signature at 0x%04x' %offset)
+			attr = NVarAttr(next_offset >> 24)
+			if attr.has_name:
+				zero = data.index('\x00', offset + 10)
+				if zero >= offset + size:
+					raise Exception('invalid ascii name')
+				name = data[offset + 10: zero]
+				print 'NAME', name
+			next_offset &= 0xffffff
+			print "%04x: %5d next: 0x%04x %s" %(offset, size, next_offset, attr)
+			offset += size
+
+store = Store(args.file)
