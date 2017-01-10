@@ -99,17 +99,19 @@ class Store(object):
 					if zero >= offset + size:
 						raise Exception('invalid ascii name')
 					name = data[offset: zero]
+					offset = zero + 1
 					print 'NAME', name
 				else:
 					zero = data.index('\x00\x00', offset)
 					if zero >= offset + size:
 						raise Exception('invalid ucs name')
 					name = str(data[offset: zero]).decode('utf16')
+					offset = zero + 1
 					print 'NAME', name
 			else: #data only
-				print 'DATA ONLY'
+				pass
 
-			print ' '.join(map(lambda x: hex(ord(x)), data[offset: _next_offset]))
+			print 'DATA ' + ' '.join(map(lambda x: hex(ord(x)), data[offset: _next_offset]))
 
 			if next_offset != 0xffffff:
 				_next_offset = _offset + next_offset
