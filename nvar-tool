@@ -73,11 +73,13 @@ class Store(object):
 			if magic != 0x5241564e: #'NVAR'
 				raise Exception('invalid NVAR signature at 0x%04x' %offset)
 
+			attr = NVarAttr(next_offset >> 24)
+			print "%04x: %5d next: 0x%04x %s" %(offset, size, next_offset, attr)
+
 			_offset = offset
 			_next_offset = offset + size
 			offset += 10
 
-			attr = NVarAttr(next_offset >> 24)
 			if not attr.valid:
 				offset = _next_offset
 				continue
@@ -103,11 +105,12 @@ class Store(object):
 						raise Exception('invalid ucs name')
 					name = str(data[offset: zero]).decode('utf16')
 					print 'NAME', name
+			else: #data only
+				print 'DATA ONLY'
 
 			next_offset &= 0xffffff
 			if next_offset != 0xffffff:
 				_next_offset = _offset + next_offset
-			print "%04x: %5d next: 0x%04x %s" %(offset, size, next_offset, attr)
 			offset = _next_offset
 
 store = Store(args.file)
