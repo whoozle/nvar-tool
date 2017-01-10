@@ -56,6 +56,8 @@ class Store(object):
 		data = self.data
 		while offset < len(data):
 			magic, size, next_offset = struct.unpack('<IHI', data[offset:offset + 10])
+			if magic == 0xffffffff: #free space
+				break
 			if magic != 0x5241564e: #'NVAR'
 				raise Exception('invalid NVAR signature at 0x%04x' %offset)
 
