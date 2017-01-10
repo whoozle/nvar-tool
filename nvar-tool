@@ -10,7 +10,7 @@ import struct
 from uuid import UUID
 
 class NVarAttr(object):
-	BITS = ('Runtime', 'AsciiName', 'GUID', 'DataOnly', 'ExtHeader', 'HWError', 'AuthWrite', 'Valid')
+	BITS = ('Runtime', 'AsciiName', 'LocalGUID', 'DataOnly', 'ExtendedHeader', 'HardwareError', 'AuthWrite', 'Valid')
 
 	@property
 	def valid(self):
@@ -19,6 +19,10 @@ class NVarAttr(object):
 	@property
 	def has_name(self):
 		return bool(self.value & 0x02)
+
+	@property
+	def has_local_guid(self):
+		return bool(self.value & 0x04)
 
 	def __init__(self, value):
 		self.value = value
@@ -54,15 +58,26 @@ class Store(object):
 			magic, size, next_offset = struct.unpack('<IHI', data[offset:offset + 10])
 			if magic != 0x5241564e: #'NVAR'
 				raise Exception('invalid NVAR signature at 0x%04x' %offset)
+
+			_next_offset = offset + size
+			offset += 10
+
 			attr = NVarAttr(next_offset >> 24)
+			if attr.has_local_guid:
+				print 'GUID'
+				offset += 16
+			else:
+				guid_index = data[offset]
+				offset += 1
+
 			if attr.has_name:
-				zero = data.index('\x00', offset + 10)
+				zero = data.index('\x00', offset)
 				if zero >= offset + size:
 					raise Exception('invalid ascii name')
-				name = data[offset + 10: zero]
+				name = data[offset: zero]
 				print 'NAME', name
 			next_offset &= 0xffffff
 			print "%04x: %5d next: 0x%04x %s" %(offset, size, next_offset, attr)
-			offset += size
+			offset = _next_offset
 
 store = Store(args.file)
