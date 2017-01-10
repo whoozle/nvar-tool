@@ -48,12 +48,22 @@ class Store(object):
 		state = size >> 24
 		size &= 0xffffff
 		print "checksum 0x%04x, type 0x%02x, attrs 0x%02x, size: 0x%04x, state: 0x%02x" %(checksum, type, attrs, size, state)
+		if Store.checksum16(data[0: 24]) != 0:
+			raise Exception('invalid header checksum')
+
 		self.data = data
 		self.body = data[24:]
 		if len(self.data) != size:
 			raise Exception("invalid size in header")
 
 		self.__parse()
+
+	@staticmethod
+	def checksum16(data):
+		sum = 0
+		for i in xrange(0, len(data), 2):
+			sum = (sum + struct.unpack('<H', data[i: i + 2])[0]) & 0x10000
+		return sum
 
 	def __guid(self, idx):
 		return UUID(bytes_le = self.data[idx: idx + 16])
