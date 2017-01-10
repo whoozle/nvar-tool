@@ -24,6 +24,10 @@ class NVarAttr(object):
 	def has_local_guid(self):
 		return bool(self.value & 0x04)
 
+	@property
+	def data_only(self):
+		return bool(self.value & 0x08)
+
 	def __init__(self, value):
 		self.value = value
 
@@ -64,11 +68,12 @@ class Store(object):
 		data = self.data
 		while offset < len(data):
 			magic, size, next_offset = struct.unpack('<IHI', data[offset:offset + 10])
-			if magic == 0xffffffff or magic == 0: #free space
+			if magic == 0xffffffff: #free space
 				break
 			if magic != 0x5241564e: #'NVAR'
 				raise Exception('invalid NVAR signature at 0x%04x' %offset)
 
+			_offset = offset
 			_next_offset = offset + size
 			offset += 10
 
@@ -77,28 +82,31 @@ class Store(object):
 				offset = _next_offset
 				continue
 
-			if attr.has_local_guid:
-				print 'GUID', self.__guid(offset)
-				offset += 16
-			else:
-				guid_index = ord(data[offset])
-				print 'GUID', self.__get_guid(guid_index), guid_index
-				offset += 1
+			if not attr.data_only:
+				if attr.has_local_guid:
+					print 'GUID', self.__guid(offset)
+					offset += 16
+				else:
+					guid_index = ord(data[offset])
+					print 'GUID', self.__get_guid(guid_index), guid_index
+					offset += 1
 
-			if attr.ascii_name:
-				zero = data.index('\x00', offset)
-				if zero >= offset + size:
-					raise Exception('invalid ascii name')
-				name = data[offset: zero]
-				print 'NAME', name
-			else:
-				zero = data.index('\x00\x00', offset)
-				if zero >= offset + size:
-					raise Exception('invalid ucs name')
-				name = str(data[offset: zero]).decode('utf16')
-				print 'NAME', name
+				if attr.ascii_name:
+					zero = data.index('\x00', offset)
+					if zero >= offset + size:
+						raise Exception('invalid ascii name')
+					name = data[offset: zero]
+					print 'NAME', name
+				else:
+					zero = data.index('\x00\x00', offset)
+					if zero >= offset + size:
+						raise Exception('invalid ucs name')
+					name = str(data[offset: zero]).decode('utf16')
+					print 'NAME', name
 
 			next_offset &= 0xffffff
+			if next_offset != 0xffffff:
+				_next_offset = _offset + next_offset
 			print "%04x: %5d next: 0x%04x %s" %(offset, size, next_offset, attr)
 			offset = _next_offset
 
