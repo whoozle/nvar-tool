@@ -109,6 +109,8 @@ class Store(object):
 			else: #data only
 				print 'DATA ONLY'
 
+			print ' '.join(map(lambda x: hex(ord(x)), data[offset: _next_offset]))
+
 			if next_offset != 0xffffff:
 				_next_offset = _offset + next_offset
 			offset = _next_offset
